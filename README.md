@@ -71,8 +71,8 @@ php artisan queue:work
 
 ## 📮 API Endpoints
 
-- `POST /api/request-otp` – Request OTP by phone number  
-- `POST /api/verify-otp` – Verify OTP and complete authentication  
+- `POST /api/send` – Request OTP by phone number  
+- `POST /api/verify` – Verify OTP and complete authentication  
 
 ---
 
