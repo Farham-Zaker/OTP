@@ -3,11 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\SendOTPRequest;
+use App\Http\Requests\VerifyOtpRequest;
 use App\Jobs\SendSMS;
 use App\Models\OTP;
+use Barryvdh\Reflection\DocBlock\Tag\ReturnTag;
 use Carbon\Carbon;
 use Exception;
 use Log;
+
+use function PHPUnit\Framework\returnSelf;
 
 class OTPController extends Controller
 {
@@ -53,6 +57,52 @@ class OTPController extends Controller
                 'statusCode' => 201,
                 'message' => 'The otp sent to desired phone number. So send it to {api/otp/verify} endpoint.',
             ], 201);
+        } catch (Exception $err) {
+            Log::error('OTP send error: ' . $err->getMessage());
+
+            return response()->json([
+                'statusCode' => 500,
+                'message' => 'Something went wrong. Please try again later.',
+            ], 500);
+        }
+    }
+    public function verify(VerifyOtpRequest $request)
+    {
+        try {
+            [
+                'phone_number' => $phone_number,
+                'otp' => $otpValue
+            ] = $request->validated();
+
+            $otp = OTP::where('phone_number', $phone_number)->latest()->first();
+
+            // return $otp->otp != $otpValue;
+            if (
+                $otp->is_used // Check if the OTP is already used
+                ||
+                $otp->otp !== $otpValue // Check if the OTP is not equal to the provided value
+            ) return response()->json([
+                'statusCode' => 400,
+                'message' => 'Invalid OTP.'
+            ], 400);
+
+            // Check if the OTP is expired
+            if ($otp->expired_at < Carbon::now()) {
+                return response()->json([
+                    'statusCode' => 400,
+                    'message' => 'OTP expired.'
+                ], 400);
+            }
+
+            // Mark the OTP as used
+            $otp->is_used = true;
+            $otp->save();
+
+            return response()->json([
+                'statusCode' => 200,
+                'message' => 'OTP verified successfully.',
+                'token' => 'xxxxxxxxxxxxx'
+            ], 200);
         } catch (Exception $err) {
             Log::error('OTP send error: ' . $err->getMessage());
 
